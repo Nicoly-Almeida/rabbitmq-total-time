@@ -14,17 +14,19 @@ public class Produtor {
 
         try (
                 Connection connection = connectionFactory.newConnection();
-                Channel canal = connection.createChannel();
+                Channel channel = connection.createChannel();
         ) {
-            String mensagem = "Nicoly Figueredo Pessoa de Almeida realizando teste 1";
-            String NOME_FILA = "teste";
+            String msg = "";
+            String QUEUE_NAME = "TESTE";
+            boolean durable = false;
+            channel.queueDeclare(QUEUE_NAME, durable, false, false, null);
 
-            //(queue, passive, durable, exclusive, autoDelete, arguments)
-            canal.queueDeclare(NOME_FILA, true, false, false, null);
+            for (int i = 0; i < 1000001; i++) {
+                msg = i + "-" + System.currentTimeMillis();
+                channel.basicPublish("", QUEUE_NAME, false, false, MessageProperties.PERSISTENT_TEXT_PLAIN, msg.getBytes());
+                System.out.println("Mensagem enviada: " + msg);
 
-            // ​(exchange, routingKey, mandatory, immediate, props, byte[] body)
-            canal.basicPublish("", NOME_FILA, false, false, MessageProperties.PERSISTENT_TEXT_PLAIN, mensagem.getBytes());
-            System.out.println("Mensagem enviada: " + mensagem);
+            }
         }
     }
 }

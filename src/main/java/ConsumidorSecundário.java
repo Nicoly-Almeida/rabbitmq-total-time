@@ -3,8 +3,9 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 
+import java.util.ArrayList;
 
-public class Consumidor {
+public class ConsumidorSecundário {
     public static void main(String[] args) throws Exception {
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost("localhost");
@@ -15,36 +16,31 @@ public class Consumidor {
         Connection connection = connectionFactory.newConnection();
         Channel channel = connection.createChannel();
 
-        String QUEUE_NAME = "TESTE";
-        String SECONDARY_QUEUE_NAME = "TESTE_TESTE";
+        String QUEUE_NAME = "TESTE_TESTE";
         boolean durable = false;
 
         channel.queueDeclare(QUEUE_NAME, durable, false, false, null);
-        channel.queueDeclare(SECONDARY_QUEUE_NAME, durable, false, false, null);
+
+        ArrayList<Long> timestamps = new ArrayList<>();
 
         DeliverCallback callback = (consumerTag, delivery) -> {
-            String message = new String(delivery.getBody());
-
             Long receivedTimestamp = System.currentTimeMillis();
-            int id = (int) Long.parseLong(message.split("-")[0]);
-            Long sentTimestamp = Long.parseLong(message.split("-")[1]);
+            timestamps.add(receivedTimestamp);
 
-            if (id == 1 || id == 1000000) {
-                channel.basicPublish("", SECONDARY_QUEUE_NAME, null, message.getBytes());
-                System.out.println("Mensagem enviada para a fila secundaria: " + message);
-            } else {
-                System.out.println("Took " + (receivedTimestamp - sentTimestamp) + "ms to receive message: " + message);
-
+            if (timestamps.size() == 2) {
+                System.out.println("Message 1: " + timestamps.get(0));
+                System.out.println("Message 2: " + timestamps.get(1));
+                System.out.println("Took " + (timestamps.get(1) - timestamps.get(0)) + "ms processing messages");
+                System.out.println("Or " + (timestamps.get(1) - timestamps.get(0)) / 1000 + "seconds");
+                timestamps.clear();
             }
 
             channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
         };
 
-        boolean autoAck = false;
+        boolean autoAck = false; // Nomeando a variavel pra facilitar leitura
         channel.basicConsume(QUEUE_NAME, autoAck, callback, consumerTag -> {
             System.out.println("Cancelaram a fila: " + QUEUE_NAME);
         });
     }
 }
-
-
